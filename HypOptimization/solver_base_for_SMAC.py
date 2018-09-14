@@ -1,77 +1,81 @@
 import random
-import numpy as np
 import scoring_variation as sv
-
-#import sklearn.metric as met
 
 class Hyperparameter(object):
     def __init__(self, name: str):
         self.name = name
+        self.value = None
+
+    @classmethod
+    def get_random_copy(self): raise NotImplementedError
+
+    @classmethod
+    def get_nearby_copy(self, range: float): raise NotImplementedError
+
+    def get_value(self):
+        return {self.name: self.value}
 
 
 class CategoricalHyperparameter(Hyperparameter):
     def __init__(self, name: str, arr: [str]):
         self.arr = arr
+        self.value = random.choice(self.arr)
         Hyperparameter.__init__(self, name)
 
-    def get_grid_param(self):
-        return self.arr
+    def get_random_copy(self):
+        return type(self)(self.name,self.arr)
 
-    def get_random(self):
-        rand = random.choice(self.arr)
-        return {self.name: rand}
-
-    def get_nearby(self,value,range: float): #range=[0,1]
+    def get_nearby_copy(self,range: float): #range=[0,1]
+        new_copy = self.get_random_copy()
         if random.random() < range:
-            return self.get_random()
-        else:
-            return {self.name: value}
+            new_copy.value=self.value
+        return new_copy
 
 
 class UniformIntegerHyperparameter(Hyperparameter):
     def __init__(self, name: str, first: int, second: int):
         self.first = first
         self.second = second
+        self.value = random.randint(self.first, self.second)
         Hyperparameter.__init__(self, name)
 
-    def get_grid_param(self):
-        return range(self.first, self.second)
+    def get_random_copy(self):
+        return type(self)(self.name, self.first, self.second)
 
-    def get_random(self):
-        rand = random.randint(self.first, self.second)
-        return {self.name: rand}
+    def get_nearby_copy(self, range: float):
+        new_copy = self.get_random_copy()
 
-    def get_nearby(self, value, range: float):
         range= int(round((self.second - self.first) * range))
-        near = random.randint(max(self.first , value - range), min(self.second,value + range))
-        return {self.name: near}
+        near = random.randint(max(self.first , self.value - range), min(self.second,self.value + range))
 
+        new_copy.value=near
+        return new_copy
 
 
 class UniformFloatHyperparameter(Hyperparameter):
     def __init__(self, name: str, first: float, second: float):
         self.first = first
         self.second = second
+        self.value= random.uniform(self.first, self.second)
         Hyperparameter.__init__(self, name)
 
-    def get_random(self):
-        rand = random.uniform(self.first, self.second)
-        return {self.name: rand}
+    def get_random_copy(self):
+        return type(self)(self.name, self.first, self.second)
 
-    def get_grid_param(self, delta=100):
-        step = (self.second - self.first) / delta
-        return np.arange(self.first, self.second, step)
+    def get_nearby_copy(self, range: float):
+        new_copy = self.get_random_copy()
 
-    def get_nearby(self,value, range: float):
         range = (self.second - self.first) * range
-        near = random.uniform(max(self.first, value - range), min(self.second, value + range))
-        return {self.name: near}
+        near = random.uniform(max(self.first, self.value - range), min(self.second, self.value + range))
+
+        new_copy.value=near
+        return new_copy
 
 
 class Solver:
     def __init__(self, estimator, params: [Hyperparameter], scoring=None):
         self.estimator = estimator
-        self.params = params
+        self.conf_space = params
 
         # scorer(estimator, *args) returns score calculated on estimator
         if scoring is None:
@@ -93,8 +97,8 @@ class Base_solver(Solver):
         print(self.scorer(maxfited, *args))
         for k in range(0, 1000):
             all_params = dict()
-            for i in self.params:
-                all_params.update(i.get_random())
+            for i in self.conf_space:
+                all_params.update(i.get_value())
             new_estimator = type(self.estimator)(**all_params)
             fited = new_estimator.fit(*args)
             # elif maxfited.score(*args) < fited.score(*args):
@@ -103,13 +107,6 @@ class Base_solver(Solver):
                 # print(self.scorer(fited, *args))
                 maxfited = fited
         return maxfited
-
-def get_grid_params(parametres: [Hyperparameter]):
-    ans = {}
-    for par in parametres:
-        ans[par.name] = par.get_grid_param()
-    return ans
-
 
 # classification
 
