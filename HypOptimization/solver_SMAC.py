@@ -9,12 +9,16 @@ now = datetime.datetime.now
 
 TIME_TO_WORK = datetime.timedelta(0,0,0,0,5)
 
+def totuple(a):
+    return tuple(map(tuple, a))
+
 class AlgorithmTrialsTracker():
     def __init__(self, estimator, scorer):
         self.estimator = estimator
         self.scorer = scorer
         self.runs_list = []
-        self.runs_info = defaultdict(dict)
+        self.runs_info = dict()#defaultdict(dict)
+        self.fukk=dict()
 
     # выполняет обучение estimator на заданное конф и тестах, запоминает их
     # возвращает оценку scorera на полученную обученную машину
@@ -27,8 +31,20 @@ class AlgorithmTrialsTracker():
         fited = configured_estimator.fit(*args)
         performance = self.scorer(fited, *args)
 
-        self.runs_list += (configuration, performance)
-        self.runs_info[configuration][args] = performance  # [conf:args:perf]
+        self.runs_list += [(configuration, performance)]
+        key_conf=tuple(configuration)
+        if not key_conf in self.runs_info:
+            self.runs_info[key_conf]=[]
+
+        dont_exist=True
+        for (exist_args,count, exist_perf) in self.runs_info[key_conf]:
+            if exist_args == args:
+                exist_perf = (exist_perf * count + performance)/(count+1)
+                count+=1
+                break
+        if dont_exist:
+            self.runs_info[key_conf] += [(args,1,performance)]
+
         return performance
 
     # возвращает пары <instance seed> для которых conf1 раньше запускался, а conf2 нет
@@ -50,8 +66,12 @@ class AlgorithmTrialsTracker():
     # возвращает N запомненных значений для fit
     def get_N_random_trials(self, N):
         X, y = [], []
-        for (conf, perf) in rng.sample(self.runs_list, N):
-            X += [conf]
+        for i in range(N):
+            (conf,perf) = rng.choice(self.runs_list)
+            params =[]
+            for param in conf:
+                params += [param.valuee()]
+            X += [params]
             y += [perf]
         return X, y
 
@@ -105,7 +125,8 @@ class SMAC_solver(sb.Solver):
 
             model = RandomForestRegressor(n_estimators=REGRESSION_TREE_SET_CARDINALLITY,
                                           min_samples_split=MINIMAL_DATA_POINTS_TO_SPLIT)
-            model.fit(self.algo_trials.get_N_random_trials(TRAIN_AMOUNT_OF_DATA))
+            X, y = self.algo_trials.get_N_random_trials(TRAIN_AMOUNT_OF_DATA)
+            model.fit(X,y)
             return model, (now() - start_time)
 
         def selectConfigurations(model, best_conf):  # self.params

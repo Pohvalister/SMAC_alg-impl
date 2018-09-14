@@ -52,7 +52,7 @@ def testClassification(paramsFinder, scorer):
             printData(ourClf)
 
 
-testClassification(solver_base.Base_solver, sv.SCORERS['average_precision'])
+#testClassification(solver_base.Base_solver, sv.SCORERS['average_precision'])
 
 
 def testClassificationS(paramsFinder, scorer):
@@ -100,4 +100,4 @@ def testClassificationS(paramsFinder, scorer):
             printData(ourClf)
 
 
-#testClassificationS(solver_SMAC.SMAC_solver, sv.SCORERS['average_precision'])
+testClassificationS(solver_SMAC.SMAC_solver, sv.SCORERS['average_precision'])

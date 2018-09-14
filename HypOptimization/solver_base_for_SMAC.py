@@ -4,7 +4,6 @@ import scoring_variation as sv
 class Hyperparameter(object):
     def __init__(self, name: str):
         self.name = name
-        self.value = None
 
     @classmethod
     def get_random_copy(self): raise NotImplementedError
@@ -12,8 +11,8 @@ class Hyperparameter(object):
     @classmethod
     def get_nearby_copy(self, range: float): raise NotImplementedError
 
-    def get_value(self):
-        return {self.name: self.value}
+    @classmethod
+    def get_value(self): raise NotImplementedError
 
 
 class CategoricalHyperparameter(Hyperparameter):
@@ -30,6 +29,12 @@ class CategoricalHyperparameter(Hyperparameter):
         if random.random() < range:
             new_copy.value=self.value
         return new_copy
+
+    def get_value(self):
+        return {self.name: self.value}
+
+    def valuee(self):
+        return self.value
 
 
 class UniformIntegerHyperparameter(Hyperparameter):
@@ -51,6 +56,12 @@ class UniformIntegerHyperparameter(Hyperparameter):
         new_copy.value=near
         return new_copy
 
+    def get_value(self):
+        return {self.name: self.value}
+
+    def valuee(self):
+        return self.value
+
 
 class UniformFloatHyperparameter(Hyperparameter):
     def __init__(self, name: str, first: float, second: float):
@@ -70,6 +81,12 @@ class UniformFloatHyperparameter(Hyperparameter):
 
         new_copy.value=near
         return new_copy
+
+    def get_value(self):
+        return {self.name: self.value}
+
+    def valuee(self):
+        return self.value
 
 
 class Solver:
