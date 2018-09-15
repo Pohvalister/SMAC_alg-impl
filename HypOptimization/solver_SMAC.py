@@ -7,55 +7,76 @@ from sklearn.ensemble import RandomForestRegressor  # based on RandomForests
 
 now = datetime.datetime.now
 
-TIME_TO_WORK = datetime.timedelta(0,0,0,0,5)
+TIME_TO_WORK = datetime.timedelta(0, 0, 0, 0, 5)
 
-def totuple(a):
-    return tuple(map(tuple, a))
+
+class ArgumentSpaceHandler():
+    def __init__(self, *args):
+        listed_args = []
+        for data in list(args):
+            listed_args += [list(data)]
+        self.listed_args = listed_args
+
+    def give_arg_space(self, template):
+        answer = []
+        for arg in self.listed_args:
+            data = []
+            for place in template:
+                data.append(arg[place])
+            answer.append(data)
+        return answer
+
+    def give_full_template(self):
+        return range(len(self.listed_args[0]))
+
 
 class AlgorithmTrialsTracker():
     def __init__(self, estimator, scorer):
         self.estimator = estimator
         self.scorer = scorer
         self.runs_list = []
-        self.runs_info = dict()#defaultdict(dict)
-        self.fukk=dict()
+        self.runs_info = dict()  # defaultdict(dict)
 
     # выполняет обучение estimator на заданное конф и тестах, запоминает их
     # возвращает оценку scorera на полученную обученную машину
     def exec_run(self, configuration, *args):
         params = dict()
         for conf in configuration:
-            params.update(conf.get_value())
+            params.update(conf.get_parameter())
 
         configured_estimator = type(self.estimator)(**params)
         fited = configured_estimator.fit(*args)
         performance = self.scorer(fited, *args)
 
         self.runs_list += [(configuration, performance)]
-        key_conf=tuple(configuration)
+        key_conf = tuple(configuration)
         if not key_conf in self.runs_info:
-            self.runs_info[key_conf]=[]
+            self.runs_info[key_conf] = []
 
-        dont_exist=True
-        for (exist_args,count, exist_perf) in self.runs_info[key_conf]:
+        dont_exist = True
+        for (exist_args, count, exist_perf) in self.runs_info[key_conf]:
             if exist_args == args:
-                exist_perf = (exist_perf * count + performance)/(count+1)
-                count+=1
+                exist_perf = (exist_perf * count + performance) / (count + 1)
+                count += 1
                 break
         if dont_exist:
-            self.runs_info[key_conf] += [(args,1,performance)]
+            self.runs_info[key_conf] += [(args, 1, performance)]
 
         return performance
 
-    # возвращает пары <instance seed> для которых conf1 раньше запускался, а conf2 нет
+    # возвращает instance для которых conf1 раньше запускался, а conf2 нет
     def get_instance_seed_pairs_for(self, conf_not_runned, conf_runned):
-        inst_conf_nR = list(self.runs_info[conf_not_runned].keys())
-        inst_conf_R = list(self.runs_info[conf_runned].keys())
+        inst_conf_nR = []  # list(self.runs_info[conf_not_runned].keys())
+        inst_conf_R = []  # list(self.runs_info[conf_runned].keys())
+        for (args, amount, perf) in self.runs_info[tuple(conf_not_runned)]:
+            inst_conf_nR += [args]
+        for (args, amount, perf) in self.runs_info[tuple(conf_runned)]:
+            inst_conf_R += [args]
 
         diff_inst_runs = np.setdiff1d(inst_conf_R, inst_conf_nR)  # DIR = ICR\ICN
         return diff_inst_runs
 
-    # возвращает пары <instance seed> для которых оба conf запускались
+    # возвращает пары instance для которых оба conf запускались
     def get_instance_for(self, conf_runned1, conf_runned2):
         inst_conf_R1 = list(self.runs_info[conf_runned1].keys())
         inst_conf_R2 = list(self.runs_info[conf_runned2].keys())
@@ -63,21 +84,25 @@ class AlgorithmTrialsTracker():
         equl_inst_runs = set(inst_conf_R1).intersection(inst_conf_R2)
         return equl_inst_runs
 
+    # [Hyperparameter] -> [values]
+    def transform(self, c):
+        params = []
+        for param in c:
+            params += [param.get_value()]
+        return params
+
     # возвращает N запомненных значений для fit
     def get_N_random_trials(self, N):
         X, y = [], []
         for i in range(N):
-            (conf,perf) = rng.choice(self.runs_list)
-            params =[]
-            for param in conf:
-                params += [param.valuee()]
-            X += [params]
+            (conf, perf) = rng.choice(self.runs_list)
+            X += [self.transform(conf)]
             y += [perf]
         return X, y
 
     # сколько раз запускали на доанной conf
     def check_confing_runs(self, conf):
-        return len(self.runs_info[conf])
+        return len(self.runs_info[tuple(conf)])
 
     # суммирует performance для текущей conf и списков параметров
     def summarize_performance(self, conf, args_list):
@@ -103,6 +128,7 @@ class SMAC_solver(sb.Solver):
         time_to_work: [datetime] = TIME_TO_WORK
         self.initial_conf = self.conf_space
         self.algo_trials = AlgorithmTrialsTracker(self.estimator, self.scorer)
+        self.args_keeper = ArgumentSpaceHandler(*args)
 
         def initialize(*args):
             # args - аргументы для которых оптимизируется
@@ -126,7 +152,7 @@ class SMAC_solver(sb.Solver):
             model = RandomForestRegressor(n_estimators=REGRESSION_TREE_SET_CARDINALLITY,
                                           min_samples_split=MINIMAL_DATA_POINTS_TO_SPLIT)
             X, y = self.algo_trials.get_N_random_trials(TRAIN_AMOUNT_OF_DATA)
-            model.fit(X,y)
+            model.fit(X, y)
             return model, (now() - start_time)
 
         def selectConfigurations(model, best_conf):  # self.params
@@ -137,8 +163,10 @@ class SMAC_solver(sb.Solver):
             start_time = now()
 
             predict_list = {}
-            for conf in self.algo_trials.get_conf_list():
-                predict_list[conf] = model.predict(conf)
+            runs_list = self.algo_trials.get_conf_list()
+
+            for (conf, perf) in runs_list:
+                predict_list[tuple(conf)] = model.predict([self.algo_trials.transform(conf)])
 
             CHECK_CONF_COUNTER = 10
             NEARBY_RANGE = 0.2
@@ -166,13 +194,13 @@ class SMAC_solver(sb.Solver):
                         if new_conf_prediction < pred:
                             output_list[new_conf] = new_conf_prediction
                             not_found_better = False
-                output_list[conf] = pred
+                output_list[tuple(conf)] = pred  # !!!
 
             for i in range(RANDOM_CONF_ADDITION_AMOUNT):
                 rng_conf = []
                 for param in self.initial_conf:
-                    rng_conf += [param.get_random_copy(NEARBY_RANGE)]
-                output_list[rng_conf] = model.predict(rng_conf)
+                    rng_conf += [param.get_random_copy()]
+                output_list[tuple(rng_conf)] = model.predict([self.algo_trials.transform(rng_conf)])
 
             return sorted(output_list.items(), key=lambda x: x[1]), (now() - start_time)
 
@@ -190,8 +218,8 @@ class SMAC_solver(sb.Solver):
                 count += 1
 
                 if self.algo_trials.check_confing_runs(best_conf) < MAX_RUNS:
-                    reduced_args = args
-                    # seed=
+                    reduced_args = args#get_args
+
                     self.algo_trials.exec_run(best_conf, *reduced_args)
 
                 N = 1
@@ -223,19 +251,14 @@ class SMAC_solver(sb.Solver):
 
             return best_conf
 
-        # core algo
-        # [R, oinc] <- Initialize(O, П)
+        # core
         best_conf = initialize(*args)
         start_time = now()
         while True:
-            # [M,tfit] <- FitModel(R)
             model, time_fit = fitModel()
-            # [Onew, tselect] <- SelectConfigurations(M,oinc,O)
             selected_conf, time_select = selectConfigurations(model, best_conf)
-            # [R,oinc] <- Intensify(Onew, oinc, M, R, tfit + tselect, П, c)
             best_conf = intensify(selected_conf, best_conf, model, time_fit + time_select, *args)
             if now() > start_time + time_to_work:
                 break
 
-
-        return self.algo_trials.exec_run(best_conf,args)
+        return self.algo_trials.exec_run(best_conf, args)

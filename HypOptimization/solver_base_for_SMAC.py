@@ -12,7 +12,7 @@ class Hyperparameter(object):
     def get_nearby_copy(self, range: float): raise NotImplementedError
 
     @classmethod
-    def get_value(self): raise NotImplementedError
+    def get_parameter(self): raise NotImplementedError
 
 
 class CategoricalHyperparameter(Hyperparameter):
@@ -30,10 +30,10 @@ class CategoricalHyperparameter(Hyperparameter):
             new_copy.value=self.value
         return new_copy
 
-    def get_value(self):
+    def get_parameter(self):
         return {self.name: self.value}
 
-    def valuee(self):
+    def get_value(self):
         return self.value
 
 
@@ -56,10 +56,10 @@ class UniformIntegerHyperparameter(Hyperparameter):
         new_copy.value=near
         return new_copy
 
-    def get_value(self):
+    def get_parameter(self):
         return {self.name: self.value}
 
-    def valuee(self):
+    def get_value(self):
         return self.value
 
 
@@ -82,10 +82,10 @@ class UniformFloatHyperparameter(Hyperparameter):
         new_copy.value=near
         return new_copy
 
-    def get_value(self):
+    def get_parameter(self):
         return {self.name: self.value}
 
-    def valuee(self):
+    def get_value(self):
         return self.value
 
 
@@ -115,7 +115,7 @@ class Base_solver(Solver):
         for k in range(0, 1000):
             all_params = dict()
             for i in self.conf_space:
-                all_params.update(i.get_value())
+                all_params.update(i.get_parameter())
             new_estimator = type(self.estimator)(**all_params)
             fited = new_estimator.fit(*args)
             # elif maxfited.score(*args) < fited.score(*args):
@@ -136,8 +136,8 @@ def decision_tree_params():
     min_samples_leaf = UniformIntegerHyperparameter("min_samples_leaf", 1, 100)
 
     min_impurity_decrease = UniformFloatHyperparameter("min_impurity_decrease", 0.0, 0.7)
-    return [criterion, splitter, min_samples_split, max_depth, min_samples_leaf, min_impurity_decrease]
-
+    return [min_samples_split, max_depth, min_samples_leaf, min_impurity_decrease]
+#criterion, splitter,
 
 def kNN_params():
     algorithm = CategoricalHyperparameter("algorithm", ["auto", "ball_tree", "kd_tree", "brute"])
