@@ -12,13 +12,16 @@ class Hyperparameter(object):
     def get_nearby_copy(self, range: float): raise NotImplementedError
 
     @classmethod
-    def get_parameter(self): raise NotImplementedError
+    def get_named_value(self): raise NotImplementedError
+
+    @classmethod
+    def get_value(self): raise NotImplementedError
 
 
 class CategoricalHyperparameter(Hyperparameter):
     def __init__(self, name: str, arr: [str]):
         self.arr = arr
-        self.value = random.choice(self.arr)
+        self.value = random.randint(0, len(arr)-1) #self.value = random.choice(self.arr)
         Hyperparameter.__init__(self, name)
 
     def get_random_copy(self):
@@ -30,8 +33,8 @@ class CategoricalHyperparameter(Hyperparameter):
             new_copy.value=self.value
         return new_copy
 
-    def get_parameter(self):
-        return {self.name: self.value}
+    def get_named_value(self):
+        return {self.name: self.arr[self.value]}
 
     def get_value(self):
         return self.value
@@ -56,7 +59,7 @@ class UniformIntegerHyperparameter(Hyperparameter):
         new_copy.value=near
         return new_copy
 
-    def get_parameter(self):
+    def get_named_value(self):
         return {self.name: self.value}
 
     def get_value(self):
@@ -82,7 +85,7 @@ class UniformFloatHyperparameter(Hyperparameter):
         new_copy.value=near
         return new_copy
 
-    def get_parameter(self):
+    def get_named_value(self):
         return {self.name: self.value}
 
     def get_value(self):
@@ -136,8 +139,8 @@ def decision_tree_params():
     min_samples_leaf = UniformIntegerHyperparameter("min_samples_leaf", 1, 100)
 
     min_impurity_decrease = UniformFloatHyperparameter("min_impurity_decrease", 0.0, 0.7)
-    return [min_samples_split, max_depth, min_samples_leaf, min_impurity_decrease]
-#criterion, splitter,
+    return [criterion, splitter, min_samples_split, max_depth, min_samples_leaf, min_impurity_decrease]
+
 
 def kNN_params():
     algorithm = CategoricalHyperparameter("algorithm", ["auto", "ball_tree", "kd_tree", "brute"])

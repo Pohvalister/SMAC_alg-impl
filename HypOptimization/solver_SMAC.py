@@ -1,16 +1,32 @@
 import solver_base_for_SMAC as sb
-import numpy as np
 import random as rng
 import datetime
-from collections import defaultdict  # multidimentional dict
-from sklearn.ensemble import RandomForestRegressor  # based on RandomForests
+
+from sklearn.ensemble import RandomForestRegressor
+from collections import defaultdict
 
 now = datetime.datetime.now
+TIME_TO_WORK2 = datetime.timedelta(0, 0, 0, 0, 5)
+TIME_TO_WORK = datetime.timedelta(0,20)
 
-TIME_TO_WORK = datetime.timedelta(0, 0, 0, 0, 5)
-
+""" Здесь и далее:
+    Конфигурация для объекта - набор параметров, которые передаются при его создании
+    Аргументы для объекта - набор параметров, которые передаются в его метод fit (если существует) 
+"""
 
 class ArgumentSpaceHandler():
+    """ Класс реализующий работу над пространством аргументов
+
+        Параметры
+        ---------
+        args : tuple([object])
+            Аргументы, надо которыми производятся методы класса
+
+        Поля
+        ---------
+        listed_args : [[object]]
+            Отвечает за хранение переданных аргументов
+    """
     def __init__(self, *args):
         listed_args = []
         for data in list(args):
@@ -18,81 +34,73 @@ class ArgumentSpaceHandler():
         self.listed_args = listed_args
 
     def give_arg_space(self, template):
+        """По заданному шаблону [number] возвращает список - подпространство, listed_args
+            в которое включаются только позиции с номерами из template
+        """
         answer = []
         for arg in self.listed_args:
             data = []
             for place in template:
-                data.append(arg[place])
-            answer.append(data)
+                data += [arg[place]]
+            answer += [data]
         return answer
 
     def give_full_template(self):
-        return range(len(self.listed_args[0]))
+        """Возвращает шаблон [number], покрывающий все пространство аргументов"""
+        answ = []
+        for i in range(len(self.listed_args[0])):
+            answ += [i]
+        return answ
 
 
 class AlgorithmTrialsTracker():
-    def __init__(self, estimator, scorer):
-        self.estimator = estimator
-        self.scorer = scorer
+    """ Класс реализующий работу со всеми запусками алгоритма
+
+        Поля
+        ---------
+        runs_list : [(Hyperparameter,number)]
+            Хранит данные о конфигурации и их средней эффективности
+
+        runs_info : {Hyperparameter : {[number] : (number, number)}}
+            Для каждой конфигуации и списка аргументов хранит количество их запусков
+            и среднюю эффективность
+    """
+    def __init__(self):
         self.runs_list = []
-        self.runs_info = dict()  # defaultdict(dict)
+        self.runs_info = defaultdict(dict)
 
-    # выполняет обучение estimator на заданное конф и тестах, запоминает их
-    # возвращает оценку scorera на полученную обученную машину
-    def exec_run(self, configuration, *args):
-        params = dict()
-        for conf in configuration:
-            params.update(conf.get_parameter())
+    def get_instance_for_diff(self, conf_not_runned, conf_runned):
+        """Для двух конфигураций возвращает подпространство аргументов таких, что уже были запуски
+         estimator для 2 ой комбинации (конфигурация, аргументы), но не было для 1 ой
+        """
+        inst_conf_nR = set(self.runs_info[tuple(conf_not_runned)].keys())
+        inst_conf_R = set(self.runs_info[tuple(conf_runned)].keys())
 
-        configured_estimator = type(self.estimator)(**params)
-        fited = configured_estimator.fit(*args)
-        performance = self.scorer(fited, *args)
-
-        self.runs_list += [(configuration, performance)]
-        key_conf = tuple(configuration)
-        if not key_conf in self.runs_info:
-            self.runs_info[key_conf] = []
-
-        dont_exist = True
-        for (exist_args, count, exist_perf) in self.runs_info[key_conf]:
-            if exist_args == args:
-                exist_perf = (exist_perf * count + performance) / (count + 1)
-                count += 1
-                break
-        if dont_exist:
-            self.runs_info[key_conf] += [(args, 1, performance)]
-
-        return performance
-
-    # возвращает instance для которых conf1 раньше запускался, а conf2 нет
-    def get_instance_seed_pairs_for(self, conf_not_runned, conf_runned):
-        inst_conf_nR = []  # list(self.runs_info[conf_not_runned].keys())
-        inst_conf_R = []  # list(self.runs_info[conf_runned].keys())
-        for (args, amount, perf) in self.runs_info[tuple(conf_not_runned)]:
-            inst_conf_nR += [args]
-        for (args, amount, perf) in self.runs_info[tuple(conf_runned)]:
-            inst_conf_R += [args]
-
-        diff_inst_runs = np.setdiff1d(inst_conf_R, inst_conf_nR)  # DIR = ICR\ICN
+        diff_inst_runs = list(inst_conf_R - inst_conf_nR)
         return diff_inst_runs
 
-    # возвращает пары instance для которых оба conf запускались
-    def get_instance_for(self, conf_runned1, conf_runned2):
-        inst_conf_R1 = list(self.runs_info[conf_runned1].keys())
-        inst_conf_R2 = list(self.runs_info[conf_runned2].keys())
+    def get_instance_for_equl(self, conf_runned1, conf_runned2):
+        """Для двух конфигураций возвращает подпространство аргументов таких, что уже были запуски
+        estimator для 2 ой комбинации (конфигурация, аргументы), и были для 1 ой
+        """
+        inst_conf_R1 = list(self.runs_info[tuple(conf_runned1)].keys())
+        inst_conf_R2 = list(self.runs_info[tuple(conf_runned2)].keys())
 
         equl_inst_runs = set(inst_conf_R1).intersection(inst_conf_R2)
         return equl_inst_runs
 
-    # [Hyperparameter] -> [values]
+
     def transform(self, c):
+        """Для конфигурации переводит её список значений : [Hyperparameter] -> [values]"""
         params = []
         for param in c:
             params += [param.get_value()]
         return params
 
-    # возвращает N запомненных значений для fit
     def get_N_random_trials(self, N):
+        """Возвращает списоки : [значения конфигурации], [эффективность], такой что в нем
+        содержится N случайно выбранных (с повторениями) значений из всех запусков
+        """
         X, y = [], []
         for i in range(N):
             (conf, perf) = rng.choice(self.runs_list)
@@ -100,15 +108,16 @@ class AlgorithmTrialsTracker():
             y += [perf]
         return X, y
 
-    # сколько раз запускали на доанной conf
     def check_confing_runs(self, conf):
+        """Для конфигурации conf возварщает количество запусков алгоритма для неё"""
         return len(self.runs_info[tuple(conf)])
 
-    # суммирует performance для текущей conf и списков параметров
     def summarize_performance(self, conf, args_list):
+        """Для конфигурации и списка параметров выводит суммарную эффективность запуска алгоритма на них"""
         sum = 0
         for args in args_list:
-            sum += self.runs_info[conf][args]
+            (count, perf) = self.runs_info[tuple(conf)][tuple(args)]
+            sum += perf
         return sum
 
     def get_conf_list(self):
@@ -116,34 +125,150 @@ class AlgorithmTrialsTracker():
 
 
 class SMAC_solver(sb.Solver):
-    # estimator - алгоритм, для которого оптимизируем параметры
-    # params - пространство гиперпараметров
-    # scorer - оценивающая функция
-    #   __init__(self, estimator, params: [Hyperparameter], scoring=None):
+    """ Класс для поиска указанных значений параметров для estimator.
+    Основные методы - fit, predict
 
-    # args - аргументы для которых оптимизируется работа estimator по params
-    # возвращает - оптимизированную конфигурацию из params
+    Параметры estimatora передаваемы в эти методы оптимизируются с помощью
+    реализации алгоритма SMAC (Sequential Model-based Algorithm Configuration)
 
+    Параметры
+    ---------
+    estimator : estimator object
+        Предполагается реализация scikit-learn estimator интерфейса.
+        Если у estimator не определена функция ``score``, то параметр ``scoring``
+        должен быть передан
+
+    params: [Hyperparameter]
+        Список объектов, отвечающих за пространства гиперпараметров, которые будут
+        оптимизироваться для estimatora.
+        Для каждого объекта предполагается реализация solver_base_for_SMAC.Hyperparameter интерфейса
+
+    scoring: string, callable или None, по умолчанию: None
+        Функция, оценивающая эффективность алгоритма estimator на тестовых данных,
+        которая возвращает единственное число
+        Если же передается строка, она определяет один из преустановленных алгоритмов
+        подсчета эффективности из scoring_variation
+
+        Если None - в качестве scoring используется метод estimator.score
+
+    Поля
+    ---------
+    initial_conf: [Hyperparameter]
+        Хранит изначальную, переданное пространство конфигураций параметров
+
+    algo_trials: AlgorithmTrialsTracker
+        Хранит в себе информацию о всех запусках estimator на конфигурациях и подпространствах аргументов
+
+    args_keeper: ArgumentSpaceHandler
+        Хранит в себе информацию о всех переданных аргументах для проверок estimator
+
+    Пример
+    ---------
+    >>> from sklearn.datasets import load_breast_cancer
+    >>> from sklearn import neighbors
+    >>> import solver_SMAC as sm
+    >>> import solver_base_for_SMAC as sb
+    >>> import scoring_variation as sv
+    >>> algo = neighbors.KNeighborsClassifier
+    >>> params = sb.kNN_params()
+    >>> dataset = load_breast_cancer
+    >>> scorer = sv.SCORERS['average_precision']
+    >>> X, y = dataset(return_X_y=True)
+    >>> clf = sm.SMAC_solver(algo,params,scorer).fit(X[0,len(X)-1],y[0,len(X)-1])
+    >>> print(scorer(clf, X, y))
+
+    """
     def fit(self, *args):
+        """ Запускает оптимизацию estimator, для набора параметров args
+
+        Параметры
+        ---------
+
+        args : набор агрументов для метода estimator.fit, каждый из которых представлен в виде списка
+    одинаковой длины
+
+            NOTE : Важно, что для любого подпространства номеров, если элементы с этим номером убрать из
+            списков в args, он останется валидным для передачи в метод estimator.fit
+                Например, SMAC_solver подходит для обтимизации алгоритмов обучения, так как если
+                в качестве args передать наборы тестов для обучения, то любая выдержка из них останется
+                наботом тестов для обучения:
+
+                (X : [[1,2],[2,3],[3,4]], y : [1, 2, 3]) - подходит для обучения
+                (X': [[1,2],[3,4]],       y': [1,3]    ) - подходит для обучения
+
+        Возвращает
+        ---------
+        estimator object - экземпляр estimator с оптимизированной конфигурацией
+        """
         time_to_work: [datetime] = TIME_TO_WORK
         self.initial_conf = self.conf_space
-        self.algo_trials = AlgorithmTrialsTracker(self.estimator, self.scorer)
+        self.algo_trials = AlgorithmTrialsTracker()
         self.args_keeper = ArgumentSpaceHandler(*args)
 
-        def initialize(*args):
-            # args - аргументы для которых оптимизируется
-            # еденичный запуск estimator, на рандомных или предустановленных p из params
-            # возвращает - его performance
+        def exec_run(self, configuration, args_template):
+            """Для заданной конфигурации и шаблона аргументов производит запуск
+            алгоритма estimator (метод estimator.fit).
+
+            Параметры
+            ---------
+            configuration : [Hyperparameters]
+                Конфигурация
+
+            args_template : [number]
+                Шаблон аргументов
+
+            Возвращает - number - эффективность полученного алгоритма, выведенную с помощью
+            функции scorer
+            """
+            params = dict()
+            for param in configuration:
+                params.update(param.get_named_value())
+
+            configured_estimator = type(self.estimator)(**params)
+
+            real_args = self.args_keeper.give_arg_space(args_template)
+
+            fited = configured_estimator.fit(*real_args)
+            performance = self.scorer(fited, *real_args)
+
+            self.algo_trials.runs_list += [(configuration, performance)]
+
+            conf_as_key = tuple(configuration)
+            args_as_key = tuple(args_template)
+
+            if not conf_as_key in self.algo_trials.runs_info:
+                self.algo_trials.runs_info[conf_as_key] = {}
+
+            if not args_as_key in self.algo_trials.runs_info[conf_as_key]:
+                self.algo_trials.runs_info[conf_as_key][args_as_key] = (0,0)
+
+            (count, perf) = self.algo_trials.runs_info[conf_as_key][args_as_key]
+            self.algo_trials.runs_info[conf_as_key][args_as_key] = (count+1,(perf*count + performance)/(count + 1))
+
+            return performance
+
+        def initialize():
+            """Еденичный запуск алгоритма на случайно заданной конфигурации
+
+            Возвращает - [Hyperparemeter] конфигурацию алгоритма
+            """
+            t_args=self.args_keeper.give_full_template()
             rng_conf = []
             for param in self.initial_conf:
                 rng_conf += [param.get_random_copy()]
-            self.algo_trials.exec_run(rng_conf, *args)
+            exec_run(self,rng_conf, t_args)
             return rng_conf
 
         def fitModel():
-            # в качестве модели используем RandomForests, создаем на n выборах (с повторениями) из тестовых данных (conf + perf)
-            # возвращает модель и время своей работы
+            """Создает модель для последующих предсказаний эффективности конфигураций для estimator.
+            В качестве модели используется алгоритм машинного обучения Random forest, и его реализация из
+            sklearn.ensemble.RandomForestRegressor¶.
 
+            Обучение модели происходит на наборах данных - конфигурация и её эффективность, выбранные случайно
+            из всех предыдущих запусков алгоритмов, в количестве TRAIN_AMOUNT_OF_DATA
+
+            Возвращает обученную модель и время, потраченное на её обучение
+            """
             start_time = now()
             REGRESSION_TREE_SET_CARDINALLITY = 10
             MINIMAL_DATA_POINTS_TO_SPLIT = 10
@@ -155,18 +280,29 @@ class SMAC_solver(sb.Solver):
             model.fit(X, y)
             return model, (now() - start_time)
 
-        def selectConfigurations(model, best_conf):  # self.params
-            # использует модель чтобы выбрать список перспективных conf. Исп pridictive распред модели для расчета EI(conf). Высчитываем конфигурации из
-            # предыдущих runs алгоритма, берем 10 с макс EI и локально смотрим ищем рядом с ними. Чтобы искать мы нормализуем параметры до [0,1] и берм 4 рядом лежащих значения
-            # останавливаемся, когда ни один из соседей не показал лучший результат. ++ ещё N-ное количество рамндомных самплов. Сортим N+10
-            # возвращ время своей работы
+        def selectConfigurations(model):
+            """Функция, которая по заданной модели выводит наиболее подходящие по эффективности конфигурации
+
+            Процесс поиска подходящих конфигураций происходит в 2 этапа:
+                1) Отбираем из известных нам запусков конфигурации с наилучшей эффективностью
+                    в количестве CHECK_CONF_COUNTER
+                2) Пытаемся найти лучшее значение, находящееся "недалеко" от выбранных конфигураций
+                    Понятие "недалеко" определяется параметром NEARBY_RANGE - отнормированное значение для
+                        метрики гиперпараметра
+                    Если после NEARBY_AMOUNT попыток не получается найти лучшее значение заканчиваем поиск
+
+            После поиска добавляется ещё RANDOM_CONF_ADDITION_AMOUNT случайно выбранных конфигураций для тестирования
+
+            Возвращает - [конфигурации] и время затраченное на свою работу
+            """
             start_time = now()
 
             predict_list = {}
             runs_list = self.algo_trials.get_conf_list()
 
             for (conf, perf) in runs_list:
-                predict_list[tuple(conf)] = model.predict([self.algo_trials.transform(conf)])
+                conf_as_key = tuple(conf)
+                predict_list[conf_as_key] = model.predict([self.algo_trials.transform(conf)])
 
             CHECK_CONF_COUNTER = 10
             NEARBY_RANGE = 0.2
@@ -202,15 +338,36 @@ class SMAC_solver(sb.Solver):
                     rng_conf += [param.get_random_copy()]
                 output_list[tuple(rng_conf)] = model.predict([self.algo_trials.transform(rng_conf)])
 
-            return sorted(output_list.items(), key=lambda x: x[1]), (now() - start_time)
+            return list(output_list.keys()), (now() - start_time)
 
-        def intensify(selected_conf, best_conf, model, time_given, *args):
-            # selected_conf - подпространство params для которого intensify
-            # best_conf - текущая лучшая конфигурация
-            # time_given - время данное на расчеты
-            # возвращает updated algo_trials, best_conf
+        def intensify(selected_conf, best_conf, time_given):
+            """Функция, отбирабщая наилучшую конфигурацию из переданного списка
 
+            Параметры
+            ---------
+            selected_conf : [[Hyperparameter]]
+                Список конфигураций, для выбора
+
+            best_conf : [Hyperparemeter]
+                Текущая лучшая конфигурация
+
+            time_given : deltatime
+                Время выделенное на поиск
+
+            Идея алгоритма - выбрать лучшую конфигурацию не только для наборов аргументов,
+            но и для его подмножеств, таким образом, чтобы сравнить новую конфиграцию функция
+            случайно выбирает из запусков старой наборы аргументов и тестирует новую на них, если
+            суммарно новая конфигурация оказаласть лучше старой, то она считается лучшей
+
+            NOTE: изначально, если у текущей лучшей конфигурации недостаточно наборов аргументов (<MAX_RUNS),
+            то они будут случайно генерироваться и тестироваться
+
+            Возвращает - [Hyperparameter]
+                Конфигурацию, которая по истечении времени функция считала лучшей
+            """
             MAX_RUNS = 2000
+
+            t_args=self.args_keeper.give_full_template()
 
             start_time, count = now(), 0
 
@@ -218,27 +375,25 @@ class SMAC_solver(sb.Solver):
                 count += 1
 
                 if self.algo_trials.check_confing_runs(best_conf) < MAX_RUNS:
-                    reduced_args = args#get_args
+                    reduced_args = rng.sample(t_args,rng.randint(len(t_args)/2,len(t_args)-1))
+                    exec_run(self, best_conf, reduced_args)
 
-                    self.algo_trials.exec_run(best_conf, *reduced_args)
-
-                N = 1
+                N = 2
                 while True:
-                    conf_set_addition = self.algo_trials.get_instance_seed_pairs_for(new_conf, best_conf)
+                    conf_set_addition = self.algo_trials.get_instance_for_diff(new_conf, best_conf)
                     conf_set_toRun = rng.sample(conf_set_addition, min(N, len(conf_set_addition)))  # get random subset
 
-                    # for (rArgs, rSeed) in conf_set_toRun:
                     for rArgs in conf_set_toRun:
-                        self.algo_trials.exec_run(new_conf, rArgs)
+                        exec_run(self, new_conf, rArgs)
 
-                    conf_set_addition = np.setdiff1d(conf_set_addition, conf_set_toRun)  # CSA = CSA\CST
+                    conf_set_addition = list(set(conf_set_addition) -  set(conf_set_toRun))  # CSA = CSA\CST
 
-                    args_runned_for_both = self.algo_trials.get_instance_for(new_conf, best_conf)
+                    args_runned_for_both = self.algo_trials.get_instance_for_equl(new_conf, best_conf)
 
                     bc_performance = self.algo_trials.summarize_performance(best_conf, args_runned_for_both)
                     nc_performance = self.algo_trials.summarize_performance(new_conf, args_runned_for_both)
 
-                    if nc_performance > bc_performance:  # !!!!наоборот мб
+                    if nc_performance < bc_performance:  # !!!!наоборот мб
                         break
                     elif len(conf_set_addition) == 0:
                         best_conf = new_conf
@@ -251,14 +406,19 @@ class SMAC_solver(sb.Solver):
 
             return best_conf
 
-        # core
-        best_conf = initialize(*args)
+        best_conf = initialize()
         start_time = now()
         while True:
             model, time_fit = fitModel()
-            selected_conf, time_select = selectConfigurations(model, best_conf)
-            best_conf = intensify(selected_conf, best_conf, model, time_fit + time_select, *args)
+            selected_conf, time_select = selectConfigurations(model)
+            best_conf = intensify(selected_conf, best_conf, time_fit + time_select)
             if now() > start_time + time_to_work:
                 break
 
-        return self.algo_trials.exec_run(best_conf, args)
+        answer_params = dict()
+        for param in best_conf:
+            answer_params.update(param.get_named_value())
+
+        configured_estimator = type(self.estimator)(**answer_params)
+
+        return configured_estimator.fit(*args)
