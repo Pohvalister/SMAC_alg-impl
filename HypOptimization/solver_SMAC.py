@@ -7,14 +7,15 @@ from collections import defaultdict
 
 now = datetime.datetime.now
 TIME_TO_WORK2 = datetime.timedelta(0, 0, 0, 0, 5)
-TIME_TO_WORK = datetime.timedelta(0,20)
+TIME_TO_WORK = datetime.timedelta(0, 20)
 
 """ Здесь и далее:
     Конфигурация для объекта - набор параметров, которые передаются при его создании
     Аргументы для объекта - набор параметров, которые передаются в его метод fit (если существует) 
 """
 
-class ArgumentSpaceHandler():
+
+class ArgumentSpaceHandler:
     """ Класс реализующий работу над пространством аргументов
 
         Параметры
@@ -27,6 +28,7 @@ class ArgumentSpaceHandler():
         listed_args : [[object]]
             Отвечает за хранение переданных аргументов
     """
+
     def __init__(self, *args):
         listed_args = []
         for data in list(args):
@@ -53,7 +55,7 @@ class ArgumentSpaceHandler():
         return answ
 
 
-class AlgorithmTrialsTracker():
+class AlgorithmTrialsTracker:
     """ Класс реализующий работу со всеми запусками алгоритма
 
         Поля
@@ -65,6 +67,7 @@ class AlgorithmTrialsTracker():
             Для каждой конфигуации и списка аргументов хранит количество их запусков
             и среднюю эффективность
     """
+
     def __init__(self):
         self.runs_list = []
         self.runs_info = defaultdict(dict)
@@ -88,7 +91,6 @@ class AlgorithmTrialsTracker():
 
         equl_inst_runs = set(inst_conf_R1).intersection(inst_conf_R2)
         return equl_inst_runs
-
 
     def transform(self, c):
         """Для конфигурации переводит её список значений : [Hyperparameter] -> [values]"""
@@ -178,6 +180,7 @@ class SMAC_solver(sb.Solver):
     >>> print(scorer(clf, X, y))
 
     """
+
     def fit(self, *args):
         """ Запускает оптимизацию estimator, для набора параметров args
 
@@ -236,14 +239,15 @@ class SMAC_solver(sb.Solver):
             conf_as_key = tuple(configuration)
             args_as_key = tuple(args_template)
 
-            if not conf_as_key in self.algo_trials.runs_info:
+            if conf_as_key not in self.algo_trials.runs_info:
                 self.algo_trials.runs_info[conf_as_key] = {}
 
-            if not args_as_key in self.algo_trials.runs_info[conf_as_key]:
-                self.algo_trials.runs_info[conf_as_key][args_as_key] = (0,0)
+            if args_as_key not in self.algo_trials.runs_info[conf_as_key]:
+                self.algo_trials.runs_info[conf_as_key][args_as_key] = (0, 0)
 
             (count, perf) = self.algo_trials.runs_info[conf_as_key][args_as_key]
-            self.algo_trials.runs_info[conf_as_key][args_as_key] = (count+1,(perf*count + performance)/(count + 1))
+            self.algo_trials.runs_info[conf_as_key][args_as_key] = (
+            count + 1, (perf * count + performance) / (count + 1))
 
             return performance
 
@@ -252,11 +256,11 @@ class SMAC_solver(sb.Solver):
 
             Возвращает - [Hyperparemeter] конфигурацию алгоритма
             """
-            t_args=self.args_keeper.give_full_template()
+            t_args = self.args_keeper.give_full_template()
             rng_conf = []
             for param in self.initial_conf:
                 rng_conf += [param.get_random_copy()]
-            exec_run(self,rng_conf, t_args)
+            exec_run(self, rng_conf, t_args)
             return rng_conf
 
         def fitModel():
@@ -330,7 +334,7 @@ class SMAC_solver(sb.Solver):
                         if new_conf_prediction < pred:
                             output_list[new_conf] = new_conf_prediction
                             not_found_better = False
-                output_list[tuple(conf)] = pred  # !!!
+                output_list[tuple(conf)] = pred
 
             for i in range(RANDOM_CONF_ADDITION_AMOUNT):
                 rng_conf = []
@@ -367,7 +371,7 @@ class SMAC_solver(sb.Solver):
             """
             MAX_RUNS = 2000
 
-            t_args=self.args_keeper.give_full_template()
+            t_args = self.args_keeper.give_full_template()
 
             start_time, count = now(), 0
 
@@ -375,7 +379,7 @@ class SMAC_solver(sb.Solver):
                 count += 1
 
                 if self.algo_trials.check_confing_runs(best_conf) < MAX_RUNS:
-                    reduced_args = rng.sample(t_args,rng.randint(len(t_args)/2,len(t_args)-1))
+                    reduced_args = rng.sample(t_args, rng.randint(len(t_args) / 2, len(t_args) - 1))
                     exec_run(self, best_conf, reduced_args)
 
                 N = 2
@@ -386,14 +390,14 @@ class SMAC_solver(sb.Solver):
                     for rArgs in conf_set_toRun:
                         exec_run(self, new_conf, rArgs)
 
-                    conf_set_addition = list(set(conf_set_addition) -  set(conf_set_toRun))  # CSA = CSA\CST
+                    conf_set_addition = list(set(conf_set_addition) - set(conf_set_toRun))  # CSA = CSA\CST
 
                     args_runned_for_both = self.algo_trials.get_instance_for_equl(new_conf, best_conf)
 
                     bc_performance = self.algo_trials.summarize_performance(best_conf, args_runned_for_both)
                     nc_performance = self.algo_trials.summarize_performance(new_conf, args_runned_for_both)
 
-                    if nc_performance < bc_performance:  # !!!!наоборот мб
+                    if nc_performance < bc_performance:
                         break
                     elif len(conf_set_addition) == 0:
                         best_conf = new_conf
