@@ -1,8 +1,9 @@
 import random
 import numpy as np
 import scoring_variation as sv
+import datetime
 
-#import sklearn.metric as met
+now = datetime.datetime.now
 
 class Hyperparameter(object):
     def __init__(self, name: str):
@@ -69,9 +70,10 @@ class UniformFloatHyperparameter(Hyperparameter):
 
 
 class Solver:
-    def __init__(self, estimator, params: [Hyperparameter], scoring=None):
+    def __init__(self, estimator, params: [Hyperparameter], scoring=None, time_to_evaluate= datetime.timedelta(0, 20)):
         self.estimator = estimator
         self.params = params
+        self.work_time=time_to_evaluate
 
         # scorer(estimator, *args) returns score calculated on estimator
         if scoring is None:
@@ -91,16 +93,14 @@ class Base_solver(Solver):
         maxfited = self.estimator.fit(*args)
         print('maxfited')
         print(self.scorer(maxfited, *args))
-        for k in range(0, 1000):
+        start_time=now()
+        while start_time+self.work_time > now():
             all_params = dict()
             for i in self.params:
                 all_params.update(i.get_random())
             new_estimator = type(self.estimator)(**all_params)
             fited = new_estimator.fit(*args)
-            # elif maxfited.score(*args) < fited.score(*args):
             if self.scorer(maxfited, *args) < self.scorer(fited, *args):
-                # print("NEW_PARAMS")
-                # print(self.scorer(fited, *args))
                 maxfited = fited
         return maxfited
 

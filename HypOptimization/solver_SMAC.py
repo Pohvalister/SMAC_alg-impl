@@ -203,7 +203,6 @@ class SMAC_solver(sb.Solver):
         ---------
         estimator object - экземпляр estimator с оптимизированной конфигурацией
         """
-        time_to_work: [datetime] = TIME_TO_WORK
         self.initial_conf = self.conf_space
         self.algo_trials = AlgorithmTrialsTracker()
         self.args_keeper = ArgumentSpaceHandler(*args)
@@ -276,7 +275,7 @@ class SMAC_solver(sb.Solver):
             start_time = now()
             REGRESSION_TREE_SET_CARDINALLITY = 10
             MINIMAL_DATA_POINTS_TO_SPLIT = 10
-            TRAIN_AMOUNT_OF_DATA = 10
+            TRAIN_AMOUNT_OF_DATA = 30
 
             model = RandomForestRegressor(n_estimators=REGRESSION_TREE_SET_CARDINALLITY,
                                           min_samples_split=MINIMAL_DATA_POINTS_TO_SPLIT)
@@ -379,7 +378,7 @@ class SMAC_solver(sb.Solver):
                 count += 1
 
                 if self.algo_trials.check_confing_runs(best_conf) < MAX_RUNS:
-                    reduced_args = rng.sample(t_args, rng.randint(len(t_args) / 2, len(t_args) - 1))
+                    reduced_args = rng.sample(t_args, rng.randint(len(t_args) // 2, len(t_args) - 1))
                     exec_run(self, best_conf, reduced_args)
 
                 N = 2
@@ -416,7 +415,7 @@ class SMAC_solver(sb.Solver):
             model, time_fit = fitModel()
             selected_conf, time_select = selectConfigurations(model)
             best_conf = intensify(selected_conf, best_conf, time_fit + time_select)
-            if now() > start_time + time_to_work:
+            if now() > start_time + self.work_time:
                 break
 
         answer_params = dict()

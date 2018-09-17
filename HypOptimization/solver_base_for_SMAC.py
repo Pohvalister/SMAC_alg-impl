@@ -1,5 +1,12 @@
 import random
+import numpy as np
 import scoring_variation as sv
+import datetime
+import warnings
+warnings.filterwarnings("ignore")
+
+now = datetime.datetime.now
+
 
 class Hyperparameter(object):
     def __init__(self, name: str):
@@ -16,6 +23,8 @@ class Hyperparameter(object):
 
     @classmethod
     def get_value(self): raise NotImplementedError
+
+    def get_grid_params(self): raise NotImplementedError
 
 
 class CategoricalHyperparameter(Hyperparameter):
@@ -38,6 +47,9 @@ class CategoricalHyperparameter(Hyperparameter):
 
     def get_value(self):
         return self.value
+
+    def get_grid_param(self):
+        return self.arr
 
 
 class UniformIntegerHyperparameter(Hyperparameter):
@@ -65,6 +77,9 @@ class UniformIntegerHyperparameter(Hyperparameter):
     def get_value(self):
         return self.value
 
+    def get_grid_param(self):
+        return range(self.first, self.second)
+
 
 class UniformFloatHyperparameter(Hyperparameter):
     def __init__(self, name: str, first: float, second: float):
@@ -91,11 +106,22 @@ class UniformFloatHyperparameter(Hyperparameter):
     def get_value(self):
         return self.value
 
+    def get_grid_param(self, delta=100):
+        step = (self.second - self.first) / delta
+        return np.arange(self.first, self.second, step)
+
+def get_grid_params(parametres: [Hyperparameter]):
+    ans = {}
+    for par in parametres:
+        ans[par.name] = par.get_grid_param()
+    return ans
+
 
 class Solver:
-    def __init__(self, estimator, params: [Hyperparameter], scoring=None):
+    def __init__(self, estimator, params: [Hyperparameter], scoring=None, time_to_evaluate= datetime.timedelta(0, 30)):
         self.estimator = estimator
         self.conf_space = params
+        self.work_time = time_to_evaluate
 
         # scorer(estimator, *args) returns score calculated on estimator
         if scoring is None:
@@ -110,21 +136,17 @@ class Solver:
     @classmethod
     def fit(self, *args):raise NotImplementedError
 
-class Base_solver(Solver):
+class Random_solver(Solver):
     def fit(self, *args):
         maxfited = self.estimator.fit(*args)
-        print('maxfited')
-        print(self.scorer(maxfited, *args))
-        for k in range(0, 1000):
+        start_time = now()
+        while start_time + self.work_time > now():
             all_params = dict()
             for i in self.conf_space:
-                all_params.update(i.get_parameter())
+                all_params.update(i.get_random_copy().get_named_value())
             new_estimator = type(self.estimator)(**all_params)
             fited = new_estimator.fit(*args)
-            # elif maxfited.score(*args) < fited.score(*args):
             if self.scorer(maxfited, *args) < self.scorer(fited, *args):
-                # print("NEW_PARAMS")
-                # print(self.scorer(fited, *args))
                 maxfited = fited
         return maxfited
 
