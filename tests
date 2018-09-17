@@ -1,0 +1,131 @@
+--testing classification algorithms
+-testing with f1_macro scorer:
+	Dataset is Breast
+Size is 284
+Testing with inserted scoring algos
+
+Testing on DecisionTreeClassifier
+---Score before search params : 
+teach: 1.0 test: 0.9211822660098522
+---Score after RandomSearchCV : 
+teach: 0.9473684210526315 test: 0.9720930232558139
+---Score after GridSearchCV : 
+teach: 0.856 test: 0.8421052631578947
+---Score after our Random_solver: 
+teach: 1.0 test: 0.900497512437811
+---Score after our SMAC_solver : 
+teach: 0.9754385964912281 test: 0.9626168224299064
+
+Testing on kNN
+---Score before search params : 
+teach: 0.9395017793594306 test: 0.9530516431924883
+---Score after RandomSearchCV : 
+teach: 0.9386281588447652 test: 0.9278846153846153
+---Score after GridSearchCV : 
+teach: 0.9399293286219081 test: 0.9579439252336448
+---Score after our Random_solver: 
+teach: 0.9703703703703704 test: 0.9170731707317074
+---Score after our SMAC_solver : 
+teach: 0.9703703703703704 test: 0.9170731707317074
+
+Testing on Perceptron
+---Score before search params : 
+teach: 0.8931297709923663 test: 0.8680203045685279
+---Score after RandomSearchCV : 
+teach: 0.669811320754717 test: 0.6523076923076924
+---Score after GridSearchCV : 
+teach: 0.7830985915492957 test: 0.9140461215932913
+---Score after our Random_solver: 
+teach: 0.9305555555555556 test: 0.9376443418013856
+---Score after our SMAC_solver : 
+teach: 0.8582677165354331 test: 0.837696335078534
+-testing with average_precision scorer:
+	Dataset is Breast
+Size is 284
+Testing with inserted scoring algos
+
+Testing on DecisionTreeClassifier
+---Score before search params : 
+teach: 1.0 test: 0.9541031598160588
+---Score after RandomSearchCV : 
+teach: 0.8663918269501408 test: 0.9391699325120995
+---Score after GridSearchCV : 
+teach: 0.8821969567818386 test: 0.9609072561339365
+---Score after our Random_solver: 
+teach: 1.0 test: 0.9542592794504758
+---Score after our SMAC_solver : 
+teach: 0.9882394142380769 test: 0.9811064276513963
+
+Testing on kNN
+---Score before search params : 
+teach: 0.9865022487712591 test: 0.9843202771915576
+---Score after RandomSearchCV : 
+teach: 0.9819409975683219 test: 0.9880418975596463
+---Score after GridSearchCV : 
+teach: 0.9846419928550644 test: 0.9874938740094115
+---Score after our Random_solver: 
+teach: 0.9940589463912741 test: 0.967951570595221
+---Score after our SMAC_solver : 
+teach: 0.9940589463912741 test: 0.967951570595221
+
+Testing on Perceptron
+---Score before search params : 
+teach: 0.9469477791521306 test: 0.9842671675507653
+---Score after RandomSearchCV : 
+teach: 0.35031369423257525 test: 0.5870823035502195
+---Score after GridSearchCV : 
+teach: 0.8067604639952642 test: 0.908358454774509
+---Score after our Random_solver: 
+teach: 0.981974935589546 test: 0.9916761039067942
+---Score after our SMAC_solver : 
+teach: 0.9421873083560572 test: 0.985187785271148
+
+--testing classification algorithms
+-testing with f1_macro scorer:
+	Dataset is Boston
+Size is 253
+Testing with inserted scoring algos
+
+Testing on Gaussian_mixture
+---Score before search params : 
+teach: 1.0 test: 1.0
+---Score after RandomSearchCV : 
+teach: 0.6618569624133148 test: 0.7633074040071832
+---Score after GridSearchCV : 
+teach: 0.7354545470740128 test: 0.7589881226221119
+---Score after our Random_solver: 
+teach: 1.0 test: 1.0
+---Score after our SMAC_solver : 
+teach: 0.7922862896337868 test: 0.8069655347830047
+-testing with average_precision scorer:
+	Dataset is Diabetes
+Size is 221
+Testing with inserted scoring algos
+
+Testing on Gaussian_mixture
+---Score before search params : 
+teach: 0.0 test: 0.0
+---Score after RandomSearchCV : 
+teach: 0.3524632870664652 test: 0.40069139867468334
+---Score after GridSearchCV : 
+teach: 0.0 test: 0.0
+---Score after our Random_solver: 
+teach: 0.5710008551804676 test: 0.5858806378545056
+---Score after our SMAC_solver : 
+teach: 0.5347081511684012 test: 0.5646838095921185
+
+	Dataset is Boston
+Size is 253
+Testing with inserted scoring algos
+
+Testing on Gaussian_mixture
+---Score before search params : 
+teach: -5.716208406353664e-18 test: -5.62699228953139e-18
+---Score after RandomSearchCV : 
+teach: 0.4727030404852911 test: 0.38936913199030243
+---Score after GridSearchCV : 
+teach: 0.48219363891664113 test: 0.46987366986433127
+---Score after our Random_solver: 
+teach: 0.5570970745492041 test: 0.4083435267394861
+---Score after our SMAC_solver : 
+teach: 0.536440548887022 test: 0.40444837314341736

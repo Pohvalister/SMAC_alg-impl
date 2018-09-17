@@ -67,7 +67,7 @@ def test(algos, params, names, datasets, datasets_name, scorer):
 
 print("--testing classification algorithms")
 algos = [tree.DecisionTreeClassifier, neighbors.KNeighborsClassifier, linear_model.Perceptron]
-params = [sb.decision_tree_params(), sb.kNN_params(), sb.percaption_params()]
+params = [sb.decision_tree_params_c(), sb.kNN_params_c(), sb.percaption_params()]
 names = ["DecisionTreeClassifier", "kNN", "Perceptron"]
 datasets = [load_breast_cancer]
 datasets_name = ["Breast"]

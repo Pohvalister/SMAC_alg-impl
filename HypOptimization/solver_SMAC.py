@@ -7,7 +7,7 @@ from collections import defaultdict
 
 now = datetime.datetime.now
 
-""" Здесь и далее:
+""" Определения:
     Конфигурация для объекта - набор параметров, которые передаются при его создании
     Аргументы для объекта - набор параметров, которые передаются в его метод fit (если существует) 
 """
@@ -162,7 +162,7 @@ class SMAC_solver(sb.Solver):
     args_keeper: ArgumentSpaceHandler
         Хранит в себе информацию о всех переданных аргументах для проверок estimator
 
-    Пример
+    Пример использования
     ---------
     >>> from sklearn.datasets import load_breast_cancer
     >>> from sklearn import neighbors
@@ -170,7 +170,7 @@ class SMAC_solver(sb.Solver):
     >>> import solver_base_for_SMAC as sb
     >>> import scoring_variation as sv
     >>> algo = neighbors.KNeighborsClassifier
-    >>> params = sb.kNN_params()
+    >>> params = sb.kNN_params_c()
     >>> dataset = load_breast_cancer
     >>> scorer = sv.SCORERS['average_precision']
     >>> X, y = dataset(return_X_y=True)
