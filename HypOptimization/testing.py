@@ -3,6 +3,9 @@ from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
 from sklearn import tree, neighbors, linear_model
 from sklearn import cluster, mixture
 
+import warnings
+warnings.filterwarnings("ignore")
+
 import solver_SMAC as sm
 import solver_base_for_SMAC as sb
 import scoring_variation as sv
@@ -30,10 +33,10 @@ def test(algos, params, names, datasets, datasets_name, scorer):
         for i in range(0, len(algos)):
 
             print("\nTesting on", names[i])
-            #defaultClf = algos[i]()
-            #defaultClf.fit(teach_X, teach_Y)
-            #print("---Score before search params : ")
-            #printData(defaultClf)
+            defaultClf = algos[i]()
+            defaultClf.fit(teach_X, teach_Y)
+            print("---Score before search params : ")
+            printData(defaultClf)
 
             grid_params = sb.get_grid_params(params[i])
 
@@ -70,10 +73,10 @@ datasets = [load_breast_cancer]
 datasets_name = ["Breast"]
 
 print("-testing with f1_macro scorer:")
-#test(algos,params,names, datasets,datasets_name,sv.SCORERS['f1_macro'])
+test(algos,params,names, datasets,datasets_name,sv.SCORERS['f1_macro'])
 
 print("-testing with average_precision scorer:")
-#test(algos,params,names, datasets,datasets_name, sv.SCORERS['average_precision'])
+test(algos,params,names, datasets,datasets_name, sv.SCORERS['average_precision'])
 
 
 print("--testing classification algorithms")

@@ -6,8 +6,6 @@ from sklearn.ensemble import RandomForestRegressor
 from collections import defaultdict
 
 now = datetime.datetime.now
-TIME_TO_WORK2 = datetime.timedelta(0, 0, 0, 0, 5)
-TIME_TO_WORK = datetime.timedelta(0, 20)
 
 """ Здесь и далее:
     Конфигурация для объекта - набор параметров, которые передаются при его создании
@@ -128,7 +126,7 @@ class AlgorithmTrialsTracker:
 
 class SMAC_solver(sb.Solver):
     """ Класс для поиска указанных значений параметров для estimator.
-    Основные методы - fit, predict
+    Основной метод - fit
 
     Параметры estimatora передаваемы в эти методы оптимизируются с помощью
     реализации алгоритма SMAC (Sequential Model-based Algorithm Configuration)
