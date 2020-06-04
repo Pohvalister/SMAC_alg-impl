@@ -1,9 +1,8 @@
 import random
 import numpy as np
 import scoring_variation as sv
-import datetime
 
-now = datetime.datetime.now
+#import sklearn.metric as met
 
 class Hyperparameter(object):
     def __init__(self, name: str):
@@ -22,12 +21,6 @@ class CategoricalHyperparameter(Hyperparameter):
         rand = random.choice(self.arr)
         return {self.name: rand}
 
-    def get_nearby(self,value,range: float): #range=[0,1]
-        if random.random() < range:
-            return self.get_random()
-        else:
-            return {self.name: value}
-
 
 class UniformIntegerHyperparameter(Hyperparameter):
     def __init__(self, name: str, first: int, second: int):
@@ -41,12 +34,6 @@ class UniformIntegerHyperparameter(Hyperparameter):
     def get_random(self):
         rand = random.randint(self.first, self.second)
         return {self.name: rand}
-
-    def get_nearby(self, value, range: float):
-        range= int(round((self.second - self.first) * range))
-        near = random.randint(max(self.first , value - range), min(self.second,value + range))
-        return {self.name: near}
-
 
 
 class UniformFloatHyperparameter(Hyperparameter):
@@ -63,17 +50,11 @@ class UniformFloatHyperparameter(Hyperparameter):
         step = (self.second - self.first) / delta
         return np.arange(self.first, self.second, step)
 
-    def get_nearby(self,value, range: float):
-        range = (self.second - self.first) * range
-        near = random.uniform(max(self.first, value - range), min(self.second, value + range))
-        return {self.name: near}
-
 
 class Solver:
-    def __init__(self, estimator, params: [Hyperparameter], scoring=None, time_to_evaluate= datetime.timedelta(0, 20)):
+    def __init__(self, estimator, params: [Hyperparameter], scoring=None):
         self.estimator = estimator
         self.params = params
-        self.work_time=time_to_evaluate
 
         # scorer(estimator, *args) returns score calculated on estimator
         if scoring is None:
@@ -85,24 +66,23 @@ class Solver:
         else:
             raise ValueError("incompatible scoring value")
 
-    @classmethod
-    def fit(self, *args):raise NotImplementedError
-
-class Base_solver(Solver):
     def fit(self, *args):
         maxfited = self.estimator.fit(*args)
         print('maxfited')
         print(self.scorer(maxfited, *args))
-        start_time=now()
-        while start_time+self.work_time > now():
+        for k in range(0, 1000):
             all_params = dict()
             for i in self.params:
                 all_params.update(i.get_random())
             new_estimator = type(self.estimator)(**all_params)
             fited = new_estimator.fit(*args)
+            # elif maxfited.score(*args) < fited.score(*args):
             if self.scorer(maxfited, *args) < self.scorer(fited, *args):
+                # print("NEW_PARAMS")
+                # print(self.scorer(fited, *args))
                 maxfited = fited
         return maxfited
+
 
 def get_grid_params(parametres: [Hyperparameter]):
     ans = {}
